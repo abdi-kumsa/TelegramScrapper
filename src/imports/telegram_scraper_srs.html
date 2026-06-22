@@ -1,0 +1,250 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #F5F4F1; }
+.srs { background: #F5F4F1; padding: 2rem 1.5rem; font-family: var(--font-sans); color: var(--color-text-primary); }
+.cover { background: #fff; border: 0.5px solid #dddbd3; border-radius: 16px; padding: 2.5rem 2rem 2rem; margin-bottom: 2rem; }
+.cover-tag { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; color: #888780; text-transform: uppercase; margin-bottom: 1rem; }
+.cover h1 { font-size: 24px; font-weight: 500; color: #1a1a18; margin-bottom: 0.4rem; }
+.cover-sub { font-size: 14px; color: #5F5E5A; margin-bottom: 1.5rem; }
+.cover-meta { display: flex; gap: 2rem; font-size: 13px; color: #888780; border-top: 0.5px solid #e8e6de; padding-top: 1rem; }
+.cover-meta span strong { color: #3d3d3a; font-weight: 500; }
+
+.section { background: #fff; border: 0.5px solid #dddbd3; border-radius: 16px; padding: 1.75rem 2rem; margin-bottom: 1.25rem; }
+.section-label { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; color: #888780; text-transform: uppercase; margin-bottom: 0.75rem; }
+.section h2 { font-size: 17px; font-weight: 500; color: #1a1a18; margin-bottom: 1rem; }
+.section p { font-size: 14px; line-height: 1.7; color: #3d3d3a; margin-bottom: 0.75rem; }
+.section p:last-child { margin-bottom: 0; }
+
+.req-row { display: flex; gap: 0.75rem; align-items: flex-start; margin-bottom: 0.75rem; }
+.req-id { font-size: 11px; font-weight: 500; background: #EEEDFE; color: #3C3489; border-radius: 6px; padding: 3px 8px; white-space: nowrap; margin-top: 2px; flex-shrink: 0; }
+.req-id.teal { background: #E1F5EE; color: #085041; }
+.req-id.amber { background: #FAEEDA; color: #633806; }
+.req-text { font-size: 14px; color: #3d3d3a; line-height: 1.6; }
+
+.divider { border: none; border-top: 0.5px solid #e8e6de; margin: 1.25rem 0; }
+
+.screen-wrap { background: #F5F4F1; border-radius: 12px; padding: 1.25rem; margin-top: 1rem; }
+.screen { background: #fff; border: 0.5px solid #dddbd3; border-radius: 10px; overflow: hidden; }
+.screen-bar { background: #F5F4F1; border-bottom: 0.5px solid #dddbd3; padding: 8px 14px; display: flex; align-items: center; gap: 6px; }
+.screen-dot { width: 8px; height: 8px; border-radius: 50%; background: #dddbd3; }
+.screen-url { font-size: 11px; color: #888780; margin-left: 6px; }
+.screen-body { padding: 1.25rem; }
+
+.mock-topbar { display: flex; align-items: center; justify-content: space-between; padding-bottom: 1rem; border-bottom: 0.5px solid #e8e6de; margin-bottom: 1rem; }
+.mock-title { font-size: 15px; font-weight: 500; color: #1a1a18; }
+.mock-badge { font-size: 11px; background: #E1F5EE; color: #085041; border-radius: 20px; padding: 3px 10px; }
+.mock-badge.warn { background: #FAEEDA; color: #633806; }
+
+.mock-input-row { display: flex; gap: 8px; margin-bottom: 1rem; }
+.mock-input { flex: 1; border: 0.5px solid #dddbd3; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #888780; background: #fafaf8; }
+.mock-btn { border: 0.5px solid #dddbd3; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 500; color: #1a1a18; background: #fff; white-space: nowrap; }
+.mock-btn.primary { background: #1a1a18; color: #fff; border-color: #1a1a18; }
+
+.mock-table-head { display: grid; grid-template-columns: 1fr 100px 110px 90px; gap: 8px; font-size: 11px; font-weight: 500; color: #888780; text-transform: uppercase; letter-spacing: 0.06em; padding-bottom: 8px; border-bottom: 0.5px solid #e8e6de; }
+.mock-row { display: grid; grid-template-columns: 1fr 100px 110px 90px; gap: 8px; font-size: 13px; color: #3d3d3a; padding: 10px 0; border-bottom: 0.5px solid #f0ede6; align-items: center; }
+.mock-row:last-child { border-bottom: none; }
+.pill { display: inline-block; font-size: 11px; border-radius: 20px; padding: 2px 8px; }
+.pill.green { background: #E1F5EE; color: #085041; }
+.pill.blue { background: #E6F1FB; color: #0C447C; }
+
+.dl-row { display: flex; gap: 10px; margin-top: 1rem; }
+.dl-btn { display: flex; align-items: center; gap: 6px; border: 0.5px solid #dddbd3; border-radius: 8px; padding: 8px 14px; font-size: 13px; color: #3d3d3a; background: #fff; }
+.dl-btn i { font-size: 15px; color: #888780; }
+
+.alert-row { display: flex; align-items: flex-start; gap: 10px; background: #FCEBEB; border: 0.5px solid #F7C1C1; border-radius: 8px; padding: 10px 14px; margin-top: 10px; font-size: 13px; color: #791F1F; }
+.alert-row i { font-size: 16px; color: #A32D2D; margin-top: 1px; flex-shrink: 0; }
+.alert-ok { background: #E1F5EE; border-color: #9FE1CB; color: #085041; }
+.alert-ok i { color: #0F6E56; }
+
+.login-wrap { max-width: 320px; margin: 0 auto; }
+.login-field { margin-bottom: 0.75rem; }
+.login-label { font-size: 12px; color: #5F5E5A; margin-bottom: 5px; }
+.login-input { width: 100%; border: 0.5px solid #dddbd3; border-radius: 8px; padding: 9px 12px; font-size: 14px; color: #1a1a18; background: #fafaf8; }
+.login-btn { width: 100%; background: #1a1a18; color: #fff; border: none; border-radius: 8px; padding: 10px; font-size: 14px; font-weight: 500; margin-top: 0.5rem; }
+
+.stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1rem; }
+.stat-card { background: #F5F4F1; border-radius: 10px; padding: 12px 14px; }
+.stat-card .val { font-size: 20px; font-weight: 500; color: #1a1a18; }
+.stat-card .lbl { font-size: 11px; color: #888780; margin-top: 2px; }
+
+.future-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; background: #F5F4F1; border: 0.5px solid #dddbd3; color: #888780; border-radius: 20px; padding: 3px 10px; }
+.phase-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid #e8e6de; }
+.phase-row:last-child { border-bottom: none; }
+.phase-num { width: 24px; height: 24px; border-radius: 50%; background: #1a1a18; color: #fff; font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.phase-num.dim { background: #dddbd3; color: #888780; }
+</style>
+
+<div class="srs">
+
+<div class="cover">
+  <div class="cover-tag">Software requirements specification</div>
+  <h1>Telegram channel collector</h1>
+  <p class="cover-sub">A private two-user web application for collecting, de-duplicating, and exporting Telegram channel links in preparation for large-scale token scraping.</p>
+  <div class="cover-meta">
+    <span><strong>Version</strong> 1.0 — Phase 1</span>
+    <span><strong>Users</strong> 2 (private, login-gated)</span>
+    <span><strong>Target</strong> 1,000 channels · 100M tokens</span>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">01 — Purpose</div>
+  <h2>What this system does</h2>
+  <p>Two people operating from different locations need to collaboratively build a list of 1,000 Telegram channel URLs without duplicating effort. This system provides a shared, login-protected web app where both users can submit channel links, see the real-time list, and download it as a backup file.</p>
+  <p>Phase 2 (automated scraping of 100,000 tokens per channel) is defined as a future feature. The current scope is Phase 1 only: collection, de-duplication, and export.</p>
+</div>
+
+<div class="section">
+  <div class="section-label">02 — Users</div>
+  <h2>Who uses the system</h2>
+  <div class="req-row"><span class="req-id">U-01</span><span class="req-text">There are exactly two users. No registration, no public sign-up. Accounts are created manually at setup time.</span></div>
+  <div class="req-row"><span class="req-id">U-02</span><span class="req-text">Every page and action requires an active login session. Unauthenticated requests redirect to the login screen.</span></div>
+  <div class="req-row"><span class="req-id">U-03</span><span class="req-text">Both users share the same channel list and see each other's additions in real time.</span></div>
+</div>
+
+<div class="section">
+  <div class="section-label">03 — Screens</div>
+  <h2>Screen 1 — Login</h2>
+  <p style="margin-bottom:1rem; font-size:13px; color:#5F5E5A;">The only publicly accessible screen. No "forgot password" or sign-up link is shown.</p>
+  <div class="screen-wrap">
+    <div class="screen">
+      <div class="screen-bar"><div class="screen-dot"></div><div class="screen-dot"></div><div class="screen-dot"></div><span class="screen-url">app.yourproject.com/login</span></div>
+      <div class="screen-body" style="padding: 2rem;">
+        <div style="text-align:center; margin-bottom: 1.5rem;">
+          <div style="font-size:16px; font-weight:500; color:#1a1a18; margin-bottom:4px;">Sign in</div>
+          <div style="font-size:13px; color:#888780;">Private access only</div>
+        </div>
+        <div class="login-wrap">
+          <div class="login-field"><div class="login-label">Username</div><div class="login-input" style="color:#888780;">your username</div></div>
+          <div class="login-field"><div class="login-label">Password</div><div class="login-input" style="color:#dddbd3;">••••••••</div></div>
+          <div class="login-btn">Sign in</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Screen 2 — Channel dashboard</h2>
+  <p style="margin-bottom:1rem; font-size:13px; color:#5F5E5A;">The main working screen after login. Shows progress stats, the submission field, the full channel list, and the download controls.</p>
+  <div class="screen-wrap">
+    <div class="screen">
+      <div class="screen-bar"><div class="screen-dot"></div><div class="screen-dot"></div><div class="screen-dot"></div><span class="screen-url">app.yourproject.com/dashboard</span></div>
+      <div class="screen-body">
+        <div class="mock-topbar">
+          <div class="mock-title">Channel collector</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div class="mock-badge">312 / 1,000 channels</div>
+            <div style="font-size:12px;color:#888780;">Signed in as <strong style="color:#3d3d3a;">you</strong></div>
+          </div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-card"><div class="val">312</div><div class="lbl">Channels collected</div></div>
+          <div class="stat-card"><div class="val">688</div><div class="lbl">Still needed</div></div>
+          <div class="stat-card"><div class="val">31%</div><div class="lbl">Progress to goal</div></div>
+        </div>
+
+        <div style="font-size:12px;font-weight:500;color:#5F5E5A;margin-bottom:6px;">Add a channel</div>
+        <div class="mock-input-row">
+          <div class="mock-input">https://t.me/channelname</div>
+          <div class="mock-btn primary">Add channel</div>
+        </div>
+
+        <div class="alert-ok alert-row" style="margin-bottom:1rem;">
+          <i class="ti ti-circle-check" aria-hidden="true"></i>
+          <span>Channel added successfully — <strong>t.me/examplechannel</strong></span>
+        </div>
+
+        <div style="font-size:12px;font-weight:500;color:#5F5E5A;margin-bottom:8px;">Channel list</div>
+        <div class="mock-table-head">
+          <span>Channel URL</span>
+          <span>Added by</span>
+          <span>Date added</span>
+          <span>Status</span>
+        </div>
+        <div class="mock-row">
+          <span style="color:#185FA5;">t.me/cryptonews_eth</span>
+          <span>you</span>
+          <span>22 Jun 2026</span>
+          <span><span class="pill green">collected</span></span>
+        </div>
+        <div class="mock-row">
+          <span style="color:#185FA5;">t.me/airdropwatch</span>
+          <span>coworker</span>
+          <span>22 Jun 2026</span>
+          <span><span class="pill green">collected</span></span>
+        </div>
+        <div class="mock-row">
+          <span style="color:#185FA5;">t.me/defi_signals_vip</span>
+          <span>you</span>
+          <span>21 Jun 2026</span>
+          <span><span class="pill blue">pending scrape</span></span>
+        </div>
+
+        <div style="font-size:12px;font-weight:500;color:#5F5E5A;margin-top:1.25rem;margin-bottom:4px;">Download backup</div>
+        <div class="dl-row">
+          <div class="dl-btn"><i class="ti ti-file-text" aria-hidden="true"></i> Download .txt</div>
+          <div class="dl-btn"><i class="ti ti-file-code" aria-hidden="true"></i> Download .jsonl</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">04 — Functional requirements</div>
+  <h2>Channel submission &amp; de-duplication</h2>
+  <div class="req-row"><span class="req-id">F-01</span><span class="req-text">On submission, the system normalises the URL (strips trailing slashes, lowercases the handle) and checks it against the database before saving.</span></div>
+  <div class="req-row"><span class="req-id">F-02</span><span class="req-text">If the channel already exists, the submission is blocked and a message is shown: "Already in the list — added by [username] on [date]."</span></div>
+  <div class="req-row"><span class="req-id">F-03</span><span class="req-text">If the channel is new, it is saved immediately with the submitting user's name and a timestamp.</span></div>
+  <div class="req-row"><span class="req-id">F-04</span><span class="req-text">The duplicate check is instant and happens before any database write, so two simultaneous submissions of the same link result in only one record.</span></div>
+
+  <div class="divider"></div>
+
+  <div style="font-size: 14px; font-weight: 500; color: #1a1a18; margin-bottom: 0.75rem;">Duplicate detected — what the user sees</div>
+  <div class="screen-wrap">
+    <div class="screen">
+      <div class="screen-bar"><div class="screen-dot"></div><div class="screen-dot"></div><div class="screen-dot"></div></div>
+      <div class="screen-body">
+        <div class="mock-input-row">
+          <div class="mock-input" style="border-color:#F7C1C1; background:#fff8f8;">https://t.me/cryptonews_eth</div>
+          <div class="mock-btn primary">Add channel</div>
+        </div>
+        <div class="alert-row">
+          <i class="ti ti-alert-circle" aria-hidden="true"></i>
+          <span>Already in the list — added by <strong>you</strong> on 22 Jun 2026. Not added again.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-label">05 — Export requirements</div>
+  <h2>Download formats</h2>
+  <div class="req-row"><span class="req-id teal">E-01</span><span class="req-text">The .txt export contains one channel URL per line, sorted by date added (oldest first). No headers, no metadata.</span></div>
+  <div class="req-row"><span class="req-id teal">E-02</span><span class="req-text">The .jsonl export contains one JSON object per line. Each object includes: <code style="font-size:12px;background:#F5F4F1;padding:1px 5px;border-radius:4px;">url</code>, <code style="font-size:12px;background:#F5F4F1;padding:1px 5px;border-radius:4px;">added_by</code>, <code style="font-size:12px;background:#F5F4F1;padding:1px 5px;border-radius:4px;">added_at</code> (ISO 8601).</span></div>
+  <div class="req-row"><span class="req-id teal">E-03</span><span class="req-text">Both exports are snapshots — they reflect the current state of the database at the moment of download. Either user can download at any time.</span></div>
+  <div class="req-row"><span class="req-id teal">E-04</span><span class="req-text">The filename includes the date and total count, e.g. <code style="font-size:12px;background:#F5F4F1;padding:1px 5px;border-radius:4px;">channels_312_2026-06-22.jsonl</code>.</span></div>
+</div>
+
+<div class="section">
+  <div class="section-label">06 — Future scope</div>
+  <h2>Phase 2 — Scraping (not in scope)</h2>
+  <p style="margin-bottom:1rem;">The following is planned but not built in Phase 1. The UI reserves a placeholder section to make the transition clear.</p>
+  <div class="req-row"><span class="req-id amber">S-01</span><span class="req-text">Each collected channel will be scraped for up to 100,000 tokens of text content.</span></div>
+  <div class="req-row"><span class="req-id amber">S-02</span><span class="req-text">Scraping will use a locking mechanism so both workers can run simultaneously without overlapping channels.</span></div>
+  <div class="req-row"><span class="req-id amber">S-03</span><span class="req-text">Scrape status per channel (pending, in progress, complete, token count) will be visible in the dashboard.</span></div>
+  <div class="req-row"><span class="req-id amber">S-04</span><span class="req-text">The .jsonl export from Phase 1 is the intended input format for the Phase 2 scraper.</span></div>
+</div>
+
+<div class="section">
+  <div class="section-label">07 — Project roadmap</div>
+  <h2>Phases at a glance</h2>
+  <div class="phase-row"><div class="phase-num">1</div><div><div style="font-size:14px;font-weight:500;color:#1a1a18;">Channel collection</div><div style="font-size:13px;color:#5F5E5A;margin-top:2px;">Login, submit, de-duplicate, export — this document</div></div></div>
+  <div class="phase-row"><div class="phase-num dim">2</div><div style="display:flex;align-items:center;gap:10px;"><div><div style="font-size:14px;font-weight:500;color:#888780;">Token scraping</div><div style="font-size:13px;color:#aaa9a0;margin-top:2px;">100K tokens × 1,000 channels = 100M tokens</div></div><span class="future-pill"><i class="ti ti-clock" style="font-size:12px;" aria-hidden="true"></i> Future</span></div></div>
+</div>
+
+</div>

@@ -1,0 +1,40 @@
+# ── Render deployment config ─────────────────────────────────────────────────
+# https://render.com/docs/infrastructure-as-code
+
+services:
+  # Web service: runs the Express backend AND serves the built frontend
+  - type: web
+    name: telegram-channel-collector
+    env: node
+    region: oregon
+    buildFilter:
+      nodeVersion: 20
+
+    # Build: install server deps AND build the frontend
+    buildCommand: |
+      cd server && npm install && cd .. && npm install && npm run build
+
+    # Start: run the Express server in production mode
+    startCommand: cd server && NODE_ENV=production node src/index.js
+
+    # Persistent disk for SQLite database
+    disk:
+      name: sqldata
+      mountPath: /data
+      sizeGB: 1
+
+    # Environment variables
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: DB_PATH
+        value: /data/collector.db
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: "*"
+
+    # Health check
+    healthCheckPath: /api/health
