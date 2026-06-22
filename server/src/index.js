@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
+import bcrypt from "bcryptjs";
 import { initDb } from "./db.js";
 import { createToken, authMiddleware } from "./auth.js";
 
@@ -13,28 +14,37 @@ const PORT = process.env.PORT || 3001;
 // ── initialise ───────────────────────────────────────────────────────────────
 
 const app = express();
-const db = initDb();
 
 app.use(cors());
 app.use(express.json());
 
-// ── serve built frontend (production) ────────────────────────────────────────
+let db;
 
-if (process.env.NODE_ENV === "production") {
-  const distPath = path.resolve(__dirname, "..", "..", "dist");
-  app.use(express.static(distPath));
+async function start() {
+  db = await initDb();
+
+  // ── serve built frontend (production) ──────────────────────────────────
+
+  if (process.env.NODE_ENV === "production") {
+    const distPath = path.resolve(__dirname, "..", "..", "dist");
+    app.use(express.static(distPath));
+  }
 }
 
 // ── auth routes ──────────────────────────────────────────────────────────────
 
-app.post("/api/auth/login", (req, res) => {
+app.post("/api/auth/login", async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password are required." });
   }
 
-  const user = db.prepare("SELECT id, email, password FROM users WHERE email = ?").get(email.toLowerCase().trim());
+  const result = await db.execute({
+    sql: "SELECT id, email, password FROM users WHERE email = ?",
+    args: [email.toLowerCase().trim()],
+  });
+  const user = result.rows[0];
 
   if (!user) {
     return res.status(401).json({ error: "Invalid email or password." });
@@ -55,18 +65,18 @@ app.post("/api/auth/login", (req, res) => {
 
 // ── channel routes (all require auth) ─────────────────────────────────────────
 
-app.get("/api/channels", authMiddleware, (req, res) => {
-  const channels = db.prepare(`
+app.get("/api/channels", authMiddleware, async (req, res) => {
+  const result = await db.execute(`
     SELECT c.id, c.url, u.email AS addedBy, c.added_at AS addedAt, c.status
     FROM channels c
     JOIN users u ON u.id = c.added_by
     ORDER BY c.added_at DESC
-  `).all();
+  `);
 
-  res.json({ channels });
+  res.json({ channels: result.rows });
 });
 
-app.post("/api/channels", authMiddleware, (req, res) => {
+app.post("/api/channels", authMiddleware, async (req, res) => {
   const { url } = req.body;
 
   if (!url || typeof url !== "string") {
@@ -99,9 +109,17 @@ app.post("/api/channels", authMiddleware, (req, res) => {
   norm = "t.me/" + handle;
 
   // Check for duplicate
-  const existing = db.prepare("SELECT id, url, added_by, added_at FROM channels WHERE url = ?").get(norm);
+  const existingResult = await db.execute({
+    sql: "SELECT id, url, added_by, added_at FROM channels WHERE url = ?",
+    args: [norm],
+  });
+  const existing = existingResult.rows[0];
   if (existing) {
-    const adder = db.prepare("SELECT email FROM users WHERE id = ?").get(existing.added_by);
+    const adderResult = await db.execute({
+      sql: "SELECT email FROM users WHERE id = ?",
+      args: [existing.added_by],
+    });
+    const adder = adderResult.rows[0];
     return res.status(409).json({
       error: "duplicate",
       message: `Already in the list — added by ${adder.email} on ${existing.added_at}.`,
@@ -109,45 +127,56 @@ app.post("/api/channels", authMiddleware, (req, res) => {
   }
 
   // Insert
-  const result = db.prepare(
-    "INSERT INTO channels (url, added_by, status) VALUES (?, ?, 'pending scrape')"
-  ).run(norm, req.user.id);
+  const insertResult = await db.execute({
+    sql: "INSERT INTO channels (url, added_by, status) VALUES (?, ?, 'pending scrape')",
+    args: [norm, req.user.id],
+  });
 
-  const channel = db.prepare(`
-    SELECT c.id, c.url, u.email AS addedBy, c.added_at AS addedAt, c.status
-    FROM channels c
-    JOIN users u ON u.id = c.added_by
-    WHERE c.id = ?
-  `).get(result.lastInsertRowid);
+  const channelResult = await db.execute({
+    sql: `SELECT c.id, c.url, u.email AS addedBy, c.added_at AS addedAt, c.status
+          FROM channels c
+          JOIN users u ON u.id = c.added_by
+          WHERE c.id = ?`,
+    args: [insertResult.lastInsertRowid],
+  });
+  const channel = channelResult.rows[0];
 
   // Get total count for milestone check
-  const count = db.prepare("SELECT COUNT(*) AS cnt FROM channels").get();
+  const countResult = await db.execute("SELECT COUNT(*) AS cnt FROM channels");
+  const total = countResult.rows[0].cnt;
 
-  res.status(201).json({ channel, total: count.cnt });
+  res.status(201).json({ channel, total });
 });
 
-app.delete("/api/channels/:id", authMiddleware, (req, res) => {
+app.delete("/api/channels/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
 
-  const existing = db.prepare("SELECT id, added_by FROM channels WHERE id = ?").get(id);
+  const existingResult = await db.execute({
+    sql: "SELECT id, added_by FROM channels WHERE id = ?",
+    args: [id],
+  });
+  const existing = existingResult.rows[0];
   if (!existing) {
     return res.status(404).json({ error: "Channel not found." });
   }
 
   // Both users can delete any channel
-  db.prepare("DELETE FROM channels WHERE id = ?").run(id);
+  await db.execute({
+    sql: "DELETE FROM channels WHERE id = ?",
+    args: [id],
+  });
 
-  const count = db.prepare("SELECT COUNT(*) AS cnt FROM channels").get();
+  const countResult = await db.execute("SELECT COUNT(*) AS cnt FROM channels");
+  const total = countResult.rows[0].cnt;
 
-  res.json({ deleted: true, total: count.cnt });
+  res.json({ deleted: true, total });
 });
 
 // ── export routes ────────────────────────────────────────────────────────────
 
-app.get("/api/export/txt", authMiddleware, (req, res) => {
-  const channels = db.prepare(`
-    SELECT url FROM channels ORDER BY added_at ASC
-  `).all();
+app.get("/api/export/txt", authMiddleware, async (req, res) => {
+  const result = await db.execute("SELECT url FROM channels ORDER BY added_at ASC");
+  const channels = result.rows;
 
   const text = channels.map((c) => "https://" + c.url).join("\n");
   const date = new Date().toISOString().slice(0, 10);
@@ -158,13 +187,14 @@ app.get("/api/export/txt", authMiddleware, (req, res) => {
   res.send(text);
 });
 
-app.get("/api/export/jsonl", authMiddleware, (req, res) => {
-  const channels = db.prepare(`
+app.get("/api/export/jsonl", authMiddleware, async (req, res) => {
+  const result = await db.execute(`
     SELECT c.url, u.email AS addedBy, c.added_at AS addedAt
     FROM channels c
     JOIN users u ON u.id = c.added_by
     ORDER BY c.added_at ASC
-  `).all();
+  `);
+  const channels = result.rows;
 
   const lines = channels.map((c) =>
     JSON.stringify({
@@ -184,9 +214,21 @@ app.get("/api/export/jsonl", authMiddleware, (req, res) => {
 
 // ── health check ─────────────────────────────────────────────────────────────
 
-app.get("/api/health", (_req, res) => {
-  const count = db.prepare("SELECT COUNT(*) AS cnt FROM channels").get();
-  res.json({ ok: true, channels: count.cnt });
+app.get("/api/health", async (_req, res) => {
+  try {
+    const result = await db.execute("SELECT COUNT(*) AS cnt FROM channels");
+    const count = result.rows[0].cnt;
+    res.json({ ok: true, channels: count });
+  } catch (err) {
+    res.json({ ok: false, error: err.message });
+  }
+});
+
+// ── global error handler ────────────────────────────────────────────────────
+
+app.use((err, _req, res, _next) => {
+  console.error(err);
+  res.status(500).json({ error: "Internal server error" });
 });
 
 // ── SPA catch-all (must be after all API routes) ─────────────────────────────
@@ -200,8 +242,13 @@ if (process.env.NODE_ENV === "production") {
 
 // ── start ────────────────────────────────────────────────────────────────────
 
-app.listen(PORT, () => {
-  const mode = process.env.NODE_ENV || "development";
-  console.log(`✓ Server running on http://localhost:${PORT} (${mode})`);
-  console.log(`  Login: kumsaaabdii@gmail.com / 1qaz  or  oliftadele@gmail.com / xsw2`);
+start().then(() => {
+  app.listen(PORT, () => {
+    const mode = process.env.NODE_ENV || "development";
+    console.log(`✓ Server running on http://localhost:${PORT} (${mode})`);
+    console.log(`  Login: kumsaaabdii@gmail.com / 1qaz  or  oliftadele@gmail.com / xsw2`);
+  });
+}).catch((err) => {
+  console.error("Failed to start server:", err);
+  process.exit(1);
 });

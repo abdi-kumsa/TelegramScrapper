@@ -17,24 +17,18 @@ services:
     # Start: run the Express server in production mode
     startCommand: cd server && NODE_ENV=production node src/index.js
 
-    # Persistent disk for SQLite database
-    disk:
-      name: sqldata
-      mountPath: /data
-      sizeGB: 1
-
     # Environment variables
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: "10000"
-      - key: DB_PATH
-        value: /data/collector.db
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
       - key: JWT_SECRET
         generateValue: true
-      - key: CORS_ORIGIN
-        value: "*"
 
     # Health check
     healthCheckPath: /api/health
