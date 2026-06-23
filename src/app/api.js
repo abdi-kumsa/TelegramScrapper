@@ -59,12 +59,6 @@ class ApiClient {
       body: body ? JSON.stringify(body) : undefined,
     });
 
-    // Handle 401 globally – token expired
-    if (res.status === 401) {
-      this.setToken(null);
-      throw new ApiError("Session expired. Please sign in again.", "UNAUTHORIZED", 401);
-    }
-
     // Handle blob/text downloads
     const ct = res.headers.get("content-type") || "";
     if (ct.includes("text/plain") || ct.includes("application/jsonlines")) {
@@ -73,7 +67,13 @@ class ApiClient {
       return { blob, filename: extractFilename(res) };
     }
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+
+    // Handle 401 globally – clear token
+    if (res.status === 401) {
+      this.setToken(null);
+      throw new ApiError(data.error || "Session expired. Please sign in again.", "UNAUTHORIZED", 401);
+    }
 
     if (!res.ok) {
       throw new ApiError(
