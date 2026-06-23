@@ -68,12 +68,10 @@ async function seedUsers(db) {
   }
 
   const insert = "INSERT INTO users (email, password) VALUES (?, ?)";
-  await db.transaction(async (tx) => {
-    for (const u of SEED_USERS) {
-      const hash = bcrypt.hashSync(u.password, 10);
-      await tx.execute({ sql: insert, args: [u.email, hash] });
-    }
-  });
+  for (const u of SEED_USERS) {
+    const hash = bcrypt.hashSync(u.password, 10);
+    await db.execute({ sql: insert, args: [u.email, hash] });
+  }
 
   console.log(`✓ Seeded ${SEED_USERS.length} users`);
 }
