@@ -1,13 +1,8 @@
 import express from "express";
 import cors from "cors";
-import path, { dirname } from "path";
-import { fileURLToPath } from "url";
 import bcrypt from "bcryptjs";
 import { initDb } from "./db.js";
 import { createToken, authMiddleware } from "./auth.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const PORT = process.env.PORT || 3001;
 
@@ -22,13 +17,6 @@ let db;
 
 async function start() {
   db = await initDb();
-
-  // ── serve built frontend (production) ──────────────────────────────────
-
-  if (process.env.NODE_ENV === "production") {
-    const distPath = path.resolve(__dirname, "..", "..", "dist");
-    app.use(express.static(distPath));
-  }
 }
 
 // ── auth routes ──────────────────────────────────────────────────────────────
@@ -83,13 +71,11 @@ app.post("/api/channels", authMiddleware, async (req, res) => {
     return res.status(400).json({ error: "URL is required." });
   }
 
-  // Normalise the URL
   let norm = url.trim().toLowerCase();
   if (norm.startsWith("https://")) norm = norm.slice(8);
   if (norm.startsWith("http://"))  norm = norm.slice(7);
   norm = norm.replace(/\/+$/, "");
 
-  // Extract the handle — accept t.me/xxx, @xxx, or bare xxx
   let handle;
   if (norm.startsWith("t.me/")) {
     handle = norm.slice(5);
@@ -101,14 +87,12 @@ app.post("/api/channels", authMiddleware, async (req, res) => {
     return res.status(400).json({ error: "Invalid Telegram channel URL or handle." });
   }
 
-  // Validate handle: alphanumeric + underscores, at least 3 chars
   if (!handle || handle.length < 3 || !/^[a-zA-Z0-9_]+$/.test(handle)) {
     return res.status(400).json({ error: "Invalid Telegram channel handle. Handles must be at least 3 alphanumeric characters or underscores." });
   }
 
   norm = "t.me/" + handle;
 
-  // Check for duplicate
   const existingResult = await db.execute({
     sql: "SELECT id, url, added_by, added_at FROM channels WHERE url = ?",
     args: [norm],
@@ -126,7 +110,6 @@ app.post("/api/channels", authMiddleware, async (req, res) => {
     });
   }
 
-  // Insert
   const insertResult = await db.execute({
     sql: "INSERT INTO channels (url, added_by, status) VALUES (?, ?, 'pending scrape')",
     args: [norm, req.user.id],
@@ -141,7 +124,6 @@ app.post("/api/channels", authMiddleware, async (req, res) => {
   });
   const channel = channelResult.rows[0];
 
-  // Get total count for milestone check
   const countResult = await db.execute("SELECT COUNT(*) AS cnt FROM channels");
   const total = countResult.rows[0].cnt;
 
@@ -160,7 +142,6 @@ app.delete("/api/channels/:id", authMiddleware, async (req, res) => {
     return res.status(404).json({ error: "Channel not found." });
   }
 
-  // Both users can delete any channel
   await db.execute({
     sql: "DELETE FROM channels WHERE id = ?",
     args: [id],
@@ -231,22 +212,12 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: "Internal server error" });
 });
 
-// ── SPA catch-all (must be after all API routes) ─────────────────────────────
-
-if (process.env.NODE_ENV === "production") {
-  const distPath = path.resolve(__dirname, "..", "..", "dist");
-  app.get("*", (_req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
-  });
-}
-
 // ── start ────────────────────────────────────────────────────────────────────
 
 start().then(() => {
   app.listen(PORT, () => {
     const mode = process.env.NODE_ENV || "development";
     console.log(`✓ Server running on http://localhost:${PORT} (${mode})`);
-    console.log(`  Login: kumsaaabdii@gmail.com / 1qaz  or  oliftadele@gmail.com / xsw2`);
   });
 }).catch((err) => {
   console.error("Failed to start server:", err);
