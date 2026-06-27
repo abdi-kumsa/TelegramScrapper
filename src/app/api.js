@@ -121,7 +121,7 @@ class ApiClient {
   async updateChannelStatus(id, status) {
     return this._fetch(`/api/channels/${id}/status`, {
       method: "PATCH",
-      body: JSON.stringify({ status }),
+      body: { status },
     });
   }
 
