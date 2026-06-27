@@ -554,7 +554,7 @@ function Dashboard({ user, onLogout }: { user: string; onLogout: () => void }) {
 // ── dashboard tab ─────────────────────────────────────────────────────────────
 
 function DashboardTab({
-  channels, allChannels, totalChannels, needed, pct, GOAL,
+  user, channels, allChannels, totalChannels, needed, pct, GOAL,
   input, setInput, inputRef,
   searchQuery, setSearchQuery, showSearch, searchRef,
   currentTab, setCurrentTab,
