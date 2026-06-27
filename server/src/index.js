@@ -55,13 +55,54 @@ app.post("/api/auth/login", async (req, res) => {
 
 app.get("/api/channels", authMiddleware, async (req, res) => {
   const result = await db.execute(`
-    SELECT c.id, c.url, u.email AS addedBy, c.added_at AS addedAt, c.status
+    SELECT 
+      c.id, 
+      c.url, 
+      u.email AS addedBy, 
+      c.added_at AS addedAt, 
+      c.status,
+      a.email AS assignedTo
     FROM channels c
     JOIN users u ON u.id = c.added_by
+    LEFT JOIN users a ON a.id = c.assigned_to
     ORDER BY c.added_at DESC
   `);
 
   res.json({ channels: result.rows });
+});
+
+app.patch("/api/channels/:id/status", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!["pending", "processing", "completed"].includes(status)) {
+    return res.status(400).json({ error: "Invalid status." });
+  }
+
+  const existingResult = await db.execute({
+    sql: "SELECT id, assigned_to, status FROM channels WHERE id = ?",
+    args: [id],
+  });
+  const existing = existingResult.rows[0];
+  
+  if (!existing) {
+    return res.status(404).json({ error: "Channel not found." });
+  }
+
+  let assigned_to = existing.assigned_to;
+  
+  if (status === "processing") {
+    assigned_to = req.user.id;
+  } else if (status === "pending") {
+    assigned_to = null; // Unclaim
+  }
+
+  await db.execute({
+    sql: "UPDATE channels SET status = ?, assigned_to = ? WHERE id = ?",
+    args: [status, assigned_to, id],
+  });
+
+  res.json({ success: true });
 });
 
 app.post("/api/channels", authMiddleware, async (req, res) => {
@@ -111,14 +152,21 @@ app.post("/api/channels", authMiddleware, async (req, res) => {
   }
 
   const insertResult = await db.execute({
-    sql: "INSERT INTO channels (url, added_by, status) VALUES (?, ?, 'pending scrape')",
+    sql: "INSERT INTO channels (url, added_by, status) VALUES (?, ?, 'pending')",
     args: [norm, req.user.id],
   });
 
   const channelResult = await db.execute({
-    sql: `SELECT c.id, c.url, u.email AS addedBy, c.added_at AS addedAt, c.status
+    sql: `SELECT 
+            c.id, 
+            c.url, 
+            u.email AS addedBy, 
+            c.added_at AS addedAt, 
+            c.status,
+            a.email AS assignedTo
           FROM channels c
           JOIN users u ON u.id = c.added_by
+          LEFT JOIN users a ON a.id = c.assigned_to
           WHERE c.id = ?`,
     args: [insertResult.lastInsertRowid],
   });

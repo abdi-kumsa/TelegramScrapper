@@ -118,6 +118,13 @@ class ApiClient {
     return this._fetch(`/api/channels/${id}`, { method: "DELETE" });
   }
 
+  async updateChannelStatus(id, status) {
+    return this._fetch(`/api/channels/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  }
+
   // ── exports ────────────────────────────────────────────────────────────────
 
   async exportTxt() {

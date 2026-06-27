@@ -32,7 +32,8 @@ interface Channel {
   url: string;
   addedBy: string;
   addedAt: string;
-  status: "collected" | "pending scrape";
+  status: "pending" | "processing" | "completed";
+  assignedTo: string | null;
 }
 
 // ── milestone checker ────────────────────────────────────────────────────────
@@ -244,16 +245,62 @@ function Dashboard({ user, onLogout }: { user: string; onLogout: () => void }) {
     }
   }
 
+  const [currentTab, setCurrentTab] = useState<"all" | "claimed" | "completed">("all");
+
   const needed    = Math.max(0, GOAL - totalChannels);
   const pct       = Math.min(100, Math.round((totalChannels / GOAL) * 100));
 
-  // Filter channels by search query
-  const filteredChannels = searchQuery.trim()
-    ? channels.filter((c) =>
-        c.url.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.addedBy.toLowerCase().includes(searchQuery.toLowerCase())
+  let displayedChannels = channels;
+
+  // 1. Tab filter
+  if (currentTab === "claimed") {
+    displayedChannels = displayedChannels.filter((c) => c.status === "processing" && c.assignedTo === user);
+  } else if (currentTab === "completed") {
+    displayedChannels = displayedChannels.filter((c) => c.status === "completed");
+  }
+
+  // 2. Search
+  if (searchQuery.trim()) {
+    displayedChannels = displayedChannels.filter((c) =>
+      c.url.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.addedBy.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }
+
+  // 3. Sort (Pending -> Processing -> Completed, then by Date)
+  const statusOrder = { pending: 1, processing: 2, completed: 3 };
+  displayedChannels.sort((a, b) => {
+    if (statusOrder[a.status] !== statusOrder[b.status]) {
+      return statusOrder[a.status] - statusOrder[b.status];
+    }
+    return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
+  });
+
+  async function handleUpdateStatus(id: number, newStatus: string) {
+    const ch = channels.find((c) => c.id === id);
+    if (!ch) return;
+
+    const prevChannels = [...channels];
+    setChannels((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              status: newStatus as any,
+              assignedTo: newStatus === "processing" ? user : newStatus === "pending" ? null : c.assignedTo,
+            }
+          : c
       )
-    : channels;
+    );
+
+    try {
+      await api.updateChannelStatus(id, newStatus);
+      toast.success("Status updated");
+    } catch (err: any) {
+      setChannels(prevChannels);
+      toast.error("Failed to update status", { description: err.message });
+    }
+  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -476,7 +523,7 @@ function Dashboard({ user, onLogout }: { user: string; onLogout: () => void }) {
         ) : (
           <DashboardTab
             user={user}
-            channels={filteredChannels}
+            channels={displayedChannels}
             allChannels={channels}
             totalChannels={totalChannels}
             needed={needed}
@@ -489,9 +536,12 @@ function Dashboard({ user, onLogout }: { user: string; onLogout: () => void }) {
             setSearchQuery={setSearchQuery}
             showSearch={showSearch}
             searchRef={searchRef}
+            currentTab={currentTab}
+            setCurrentTab={setCurrentTab}
             handleAdd={handleAdd}
             handleDelete={handleDelete}
             handleCopy={handleCopy}
+            handleUpdateStatus={handleUpdateStatus}
             handleExportTxt={handleExportTxt}
             handleExportJsonl={handleExportJsonl}
           />
@@ -507,7 +557,8 @@ function DashboardTab({
   channels, allChannels, totalChannels, needed, pct, GOAL,
   input, setInput, inputRef,
   searchQuery, setSearchQuery, showSearch, searchRef,
-  handleAdd, handleDelete, handleCopy,
+  currentTab, setCurrentTab,
+  handleAdd, handleDelete, handleCopy, handleUpdateStatus,
   handleExportTxt, handleExportJsonl,
 }: {
   user: string;
@@ -524,9 +575,12 @@ function DashboardTab({
   setSearchQuery: (v: string) => void;
   showSearch: boolean;
   searchRef: React.RefObject<HTMLInputElement | null>;
+  currentTab: "all" | "claimed" | "completed";
+  setCurrentTab: (v: "all" | "claimed" | "completed") => void;
   handleAdd: (e: React.FormEvent) => void;
   handleDelete: (id: number) => void;
   handleCopy: (url: string) => void;
+  handleUpdateStatus: (id: number, status: string) => void;
   handleExportTxt: () => void;
   handleExportJsonl: () => void;
 }) {
@@ -666,6 +720,27 @@ function DashboardTab({
         )}
       </AnimatePresence>
 
+      {/* channel list tabs */}
+      <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-lg w-fit">
+        {[
+          { id: "all", label: "All channels" },
+          { id: "claimed", label: "My claimed" },
+          { id: "completed", label: "Completed" },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setCurrentTab(tab.id as any)}
+            className={`px-3 py-1.5 text-[12px] font-medium rounded-md transition-colors ${
+              currentTab === tab.id
+                ? "bg-white text-[#1a1a18] shadow-sm"
+                : "text-muted-foreground hover:text-[#1a1a18] hover:bg-white/50"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* channel list */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -674,10 +749,12 @@ function DashboardTab({
         className="bg-card border border-border rounded-2xl overflow-hidden"
       >
         <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
-          <span className="text-[13px] font-medium text-[#1a1a18]">Channel list</span>
+          <span className="text-[13px] font-medium text-[#1a1a18]">
+            {currentTab === "all" ? "Channel list" : currentTab === "claimed" ? "My claimed channels" : "Completed channels"}
+          </span>
           <span className="text-[11px] text-muted-foreground">
             {channels.length} {channels.length === 1 ? "entry" : "entries"}
-            {channels.length !== allChannels.length && (
+            {channels.length !== allChannels.length && currentTab === "all" && (
               <span className="ml-1">(filtered from {allChannels.length})</span>
             )}
           </span>
@@ -742,13 +819,40 @@ function DashboardTab({
                           </span>
                         </td>
                         <td className="px-5 py-3">
-                          <span className={`inline-block text-[11px] rounded-full px-2.5 py-0.5 ${
-                            c.status === "collected"
-                              ? "bg-[#E1F5EE] text-[#085041]"
-                              : "bg-[#E6F1FB] text-[#0C447C]"
-                          }`}>
-                            {c.status}
-                          </span>
+                          {c.status === "pending" && (
+                            <button
+                              onClick={() => handleUpdateStatus(c.id, "processing")}
+                              className="text-[11px] bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-full px-2.5 py-0.5 font-medium transition-colors"
+                            >
+                              Claim
+                            </button>
+                          )}
+                          {c.status === "processing" && c.assignedTo === user && (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => handleUpdateStatus(c.id, "completed")}
+                                className="text-[11px] bg-green-50 text-green-600 hover:bg-green-100 border border-green-200 rounded-full px-2.5 py-0.5 font-medium transition-colors"
+                              >
+                                Mark Done
+                              </button>
+                              <button
+                                onClick={() => handleUpdateStatus(c.id, "pending")}
+                                className="text-[11px] text-muted-foreground hover:text-[#1a1a18] underline transition-colors"
+                              >
+                                Unclaim
+                              </button>
+                            </div>
+                          )}
+                          {c.status === "processing" && c.assignedTo !== user && (
+                            <span className="inline-block text-[11px] rounded-full px-2.5 py-0.5 bg-[#E6F1FB] text-[#0C447C]">
+                              Claimed by {c.assignedTo?.split('@')[0]}
+                            </span>
+                          )}
+                          {c.status === "completed" && (
+                            <span className="inline-flex items-center gap-1 text-[11px] rounded-full px-2.5 py-0.5 bg-[#E1F5EE] text-[#085041]">
+                              <CheckCircle size={10} /> Completed
+                            </span>
+                          )}
                         </td>
                         <td className="px-5 py-3 text-right">
                           <motion.button
@@ -807,13 +911,36 @@ function DashboardTab({
                       <span>{c.addedBy}</span>
                       <span>·</span>
                       <span title={formatDate(c.addedAt)}>{getRelativeTime(c.addedAt)}</span>
-                      <span className={`ml-auto inline-block text-[11px] rounded-full px-2.5 py-0.5 ${
-                        c.status === "collected"
-                          ? "bg-[#E1F5EE] text-[#085041]"
-                          : "bg-[#E6F1FB] text-[#0C447C]"
-                      }`}>
-                        {c.status}
-                      </span>
+                      <div className="ml-auto flex items-center gap-2">
+                        {c.status === "pending" && (
+                          <button
+                            onClick={() => handleUpdateStatus(c.id, "processing")}
+                            className="text-[11px] bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-full px-2.5 py-0.5 font-medium transition-colors"
+                          >
+                            Claim
+                          </button>
+                        )}
+                        {c.status === "processing" && c.assignedTo === user && (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleUpdateStatus(c.id, "completed")}
+                              className="text-[11px] bg-green-50 text-green-600 hover:bg-green-100 border border-green-200 rounded-full px-2.5 py-0.5 font-medium transition-colors"
+                            >
+                              Done
+                            </button>
+                          </div>
+                        )}
+                        {c.status === "processing" && c.assignedTo !== user && (
+                          <span className="inline-block text-[11px] rounded-full px-2.5 py-0.5 bg-[#E6F1FB] text-[#0C447C]">
+                            {c.assignedTo?.split('@')[0]}
+                          </span>
+                        )}
+                        {c.status === "completed" && (
+                          <span className="inline-block text-[11px] rounded-full px-2.5 py-0.5 bg-[#E1F5EE] text-[#085041]">
+                            Completed
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </motion.div>
                 ))}

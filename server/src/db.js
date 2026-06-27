@@ -36,16 +36,61 @@ async function runMigrations(db) {
     )
   `);
 
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS channels (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      url         TEXT    NOT NULL UNIQUE,
-      added_by    INTEGER NOT NULL,
-      added_at    TEXT    NOT NULL DEFAULT (datetime('now')),
-      status      TEXT    NOT NULL DEFAULT 'pending scrape'
-        CHECK (status IN ('collected', 'pending scrape'))
-    )
-  `);
+  const checkCount = await db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='channels'");
+  const tableExists = checkCount.rows.length > 0;
+
+  if (!tableExists) {
+    // New database, create fresh table
+    await db.execute(`
+      CREATE TABLE channels (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        url         TEXT    NOT NULL UNIQUE,
+        added_by    INTEGER NOT NULL,
+        added_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+        status      TEXT    NOT NULL DEFAULT 'pending'
+          CHECK (status IN ('pending', 'processing', 'completed')),
+        assigned_to INTEGER,
+        FOREIGN KEY (added_by) REFERENCES users(id),
+        FOREIGN KEY (assigned_to) REFERENCES users(id)
+      )
+    `);
+  } else {
+    // Table exists, check if it needs migration
+    let hasAssignedTo = false;
+    try {
+      const tableInfo = await db.execute("PRAGMA table_info(channels)");
+      hasAssignedTo = tableInfo.rows.some(r => r.name === 'assigned_to');
+    } catch (err) { }
+
+    if (!hasAssignedTo) {
+      console.log("Migrating channels table to new schema...");
+      await db.execute("ALTER TABLE channels RENAME TO channels_old");
+      
+      await db.execute(`
+        CREATE TABLE channels (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          url         TEXT    NOT NULL UNIQUE,
+          added_by    INTEGER NOT NULL,
+          added_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+          status      TEXT    NOT NULL DEFAULT 'pending'
+            CHECK (status IN ('pending', 'processing', 'completed')),
+          assigned_to INTEGER,
+          FOREIGN KEY (added_by) REFERENCES users(id),
+          FOREIGN KEY (assigned_to) REFERENCES users(id)
+        )
+      `);
+
+      await db.execute(`
+        INSERT INTO channels (id, url, added_by, added_at, status)
+        SELECT id, url, added_by, added_at, 
+          CASE WHEN status = 'collected' THEN 'completed' ELSE 'pending' END
+        FROM channels_old
+      `);
+
+      await db.execute("DROP TABLE channels_old");
+      console.log("Migration complete.");
+    }
+  }
 
   await db.execute("CREATE INDEX IF NOT EXISTS idx_channels_url ON channels(url)");
   await db.execute("CREATE INDEX IF NOT EXISTS idx_channels_added ON channels(added_at)");
